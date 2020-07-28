@@ -15,5 +15,7 @@ type Message struct {
 	// Body is the message body object
 	// the message body is de-serialized at retrieval and serialized before sending request
 	Body interface{}
-}
 
+	// RealResponse is the real http response gotten from the api
+	RealResponse *http.Response
+}

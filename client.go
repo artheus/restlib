@@ -22,6 +22,10 @@ type APIClient interface {
 
 // Call is a default implementation of the APIClient.Call method
 func Call(c APIClient, path string, request *Message, response *Message) (err error) {
+	if request == nil || response == nil {
+		return errors.New("must provide request and response message objects")
+	}
+
 	var data []byte
 
 	if data, err = c.MessageType().Serializer().Marshal(request); err != nil {
@@ -35,23 +39,24 @@ func Call(c APIClient, path string, request *Message, response *Message) (err er
 		return err
 	}
 
+	httpReq.Header = request.Header
+
 	var httpResp *http.Response
 
 	if httpResp, err = http.DefaultClient.Do(httpReq); err != nil {
 		return err
 	}
 
-	if response != nil {
-		if data, err = ioutil.ReadAll(httpResp.Body); err != nil {
-			return err
-		}
+	if data, err = ioutil.ReadAll(httpResp.Body); err != nil {
+		return err
+	}
 
-		if err = c.MessageType().Serializer().Unmarshal(data, response); err != nil {
-			return errors.Wrapf(err, "unable to de-serialize response data")
-		}
+	response.Status = httpResp.StatusCode
+	response.Header = httpResp.Header
+	response.RealResponse = httpResp
 
-		response.Status = httpResp.StatusCode
-		response.Header = httpResp.Header
+	if err = c.MessageType().Serializer().Unmarshal(data, response); err != nil {
+		return errors.Wrapf(err, "unable to de-serialize response data")
 	}
 
 	return nil
